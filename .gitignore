@@ -1,0 +1,38 @@
+# Secrete si configurari de mediu
+.env
+.env.*
+!.env.example
+
+# Dependente comune si log-uri
+node_modules/
+dist/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Mobile / Expo & React Native
+.expo/
+.expo-shared/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
+# Build-uri mobile (Android & iOS)
+*.apk
+*.aab
+*.ipa
+
+# Mobile / Flutter (pastrat pentru compatibilitate)
+.dart-tool/
+.packages
+build/
+
+# Sisteme & IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

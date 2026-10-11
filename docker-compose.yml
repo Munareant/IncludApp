@@ -1,0 +1,16 @@
+services:
+  Database:
+    image: postgis/postgis:16-3.4
+    container_name: includapp_db
+    restart: always
+    environment:
+      POSTGRES_USER: includadmin
+      POSTGRES_PASSWORD: devpassword123
+      POSTGRES_DB: includapp
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:
