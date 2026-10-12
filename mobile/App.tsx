@@ -1,156 +1,208 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Alert, ScrollView } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import * as Location from 'expo-location';
+import { io } from 'socket.io-client';
 import axios from 'axios';
-import { connectSocket } from './src/services/socket';
 import { API_BASE_URL } from './src/config/api';
+import { QRScannerModal } from './src/components/QRScannerModal';
+import { RequestsMapModal } from './src/components/RequestsMapModal';
+import { BeneficiaryQRModal } from './src/components/BeneficiaryQRModal';
 
 export default function App() {
-  const [location, setLocation] = useState<Location.LocationObject | null>(null);
-  const [incomingAlert, setIncomingAlert] = useState<any>(null);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [loading, setLoading] = useState(false);
+  const [scannerVisible, setScannerVisible] = useState(false);
+  const [mapVisible, setMapVisible] = useState(false);
+  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
+  const [qrModalVisible, setQrModalVisible] = useState(false);
 
   useEffect(() => {
+    // 1. Conectare Socket.io
+    const socket = io(API_BASE_URL);
+
+    socket.on('connect', () => {
+      console.log('Conectat la serverul WebSocket!');
+    });
+
+    socket.on('new_sos_alert', (data) => {
+      Alert.alert(
+        'ALERTA SOS!',
+        `O persoana din apropiere are nevoie de ajutor!\nTip: ${data.category || 'Generala'}`
+      );
+    });
+
+    // 2. Cerere permisiune de localizare GPS
     (async () => {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Eroare', 'Permisiunea de localizare este necesara pentru IncludApp.');
+        Alert.alert('Eroare', 'Permisiunea de localizare a fost refuzata.');
         return;
       }
+
       const currentLocation = await Location.getCurrentPositionAsync({});
-      setLocation(currentLocation);
+      setLocation({
+        latitude: currentLocation.coords.latitude,
+        longitude: currentLocation.coords.longitude,
+      });
     })();
 
-    const socket = connectSocket();
-    socket.on('new_sos_alert', (alertData: any) => {
-      console.log('Alerta SOS primita:', alertData);
-      setIncomingAlert(alertData);
-    });
-
     return () => {
-      socket.off('new_sos_alert');
+      socket.disconnect();
     };
   }, []);
 
-  const triggerSOS = async () => {
+  const handleSendSOS = async () => {
     if (!location) {
-      Alert.alert('Asteapta', 'Se citesc coordonatele GPS...');
+      Alert.alert('Atentie', 'Se obtin coordonatele GPS. Te rugam sa astepti cateva secunde.');
       return;
     }
 
     setLoading(true);
     try {
       const response = await axios.post(`${API_BASE_URL}/api/requests`, {
-        beneficiaryId: 'a0000000-0000-0000-0000-000000000001',
-        title: 'Asistenta mobilitate solicitata',
-        description: 'Beneficiarul are nevoie de sprijin imediat.',
-        latitude: location.coords.latitude,
-        longitude: location.coords.longitude,
+        beneficiaryId: '00000000-0000-0000-0000-000000000001',
+        title: 'Cerere SOS Urgenta',
+        category: 'URGENTA',
+        description: 'Am nevoie de asistenta imediata!',
+        latitude: location.latitude,
+        longitude: location.longitude,
       });
 
-      Alert.alert('Trimis!', `Cererea SOS a fost inregistrata cu ID: ${response.data.id}`);
+      // Salvam ID-ul generat si deschidem ecranul cu codul QR
+      setActiveRequestId(response.data.id);
+      setQrModalVisible(true);
     } catch (error: any) {
-      console.error('Eroare SOS:', error.message);
-      Alert.alert('Eroare conexiune', 'Verifica IP-ul serverului si conexiunea Wi-Fi.');
+      console.log('Eroare detaliata SOS:', error.response?.data);
+      const backendMessage = error.response?.data?.message 
+        || JSON.stringify(error.response?.data) 
+        || error.message;
+      Alert.alert('Eroare Backend', `Status ${error.response?.status}: ${backendMessage}`);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.header}>IncludApp Mobile</Text>
-
+    <View style={styles.container}>
+      <Text style={styles.title}>IncludApp Mobile</Text>
+      
       {location ? (
-        <Text style={styles.gpsText}>
-          GPS: {location.coords.latitude.toFixed(4)}, {location.coords.longitude.toFixed(4)}
+        <Text style={styles.coords}>
+          GPS: {location.latitude.toFixed(4)}, {location.longitude.toFixed(4)}
         </Text>
       ) : (
-        <Text style={styles.gpsText}>Se cauta semnalul GPS...</Text>
+        <Text style={styles.coords}>Se cauta semnal GPS...</Text>
       )}
 
+      {/* Buton SOS Beneficiar */}
       <TouchableOpacity 
-        style={[styles.sosButton, loading && styles.disabledButton]} 
-        onPress={triggerSOS}
+        style={styles.sosButton} 
+        onPress={handleSendSOS} 
         disabled={loading}
       >
-        <Text style={styles.sosButtonText}>{loading ? 'SE TRIMITE...' : 'TRIMITE SOS'}</Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" size="large" />
+        ) : (
+          <Text style={styles.sosText}>SOS</Text>
+        )}
       </TouchableOpacity>
 
-      {incomingAlert && (
-        <View style={styles.alertCard}>
-          <Text style={styles.alertTitle}>ALERTA SOS IN APROPIERE!</Text>
-          <Text style={styles.alertBody}>{incomingAlert.title}</Text>
-          <Text style={styles.alertBody}>Descriere: {incomingAlert.description}</Text>
-          <Text style={styles.alertCoords}>
-            Lat: {incomingAlert.latitude} | Lng: {incomingAlert.longitude}
-          </Text>
-        </View>
-      )}
-    </ScrollView>
+      {/* Buton Scanner QR Voluntar */}
+      <TouchableOpacity 
+        style={styles.volunteerButton} 
+        onPress={() => setScannerVisible(true)}
+      >
+        <Text style={styles.volunteerButtonText}>Scaneaza QR (Voluntar)</Text>
+      </TouchableOpacity>
+
+      {/* Buton Vizualizare Harta */}
+      <TouchableOpacity 
+        style={[styles.volunteerButton, { backgroundColor: '#0284c7', marginTop: 12 }]} 
+        onPress={() => setMapVisible(true)}
+      >
+        <Text style={styles.volunteerButtonText}>Vezi Cereri pe Harta</Text>
+      </TouchableOpacity>
+
+      {/* Modal Scanner QR Voluntar */}
+      <QRScannerModal
+        visible={scannerVisible}
+        onClose={() => setScannerVisible(false)}
+        volunteerId="00000000-0000-0000-0000-000000000002"
+        onSuccess={() => console.log('Misiune completata!')}
+      />
+
+      {/* Modal Harta Interactiva */}
+      <RequestsMapModal
+        visible={mapVisible}
+        onClose={() => setMapVisible(false)}
+        userLocation={location}
+      />
+
+      {/* Modal Cod QR Beneficiar */}
+      <BeneficiaryQRModal
+        visible={qrModalVisible}
+        onClose={() => setQrModalVisible(false)}
+        requestId={activeRequestId}
+      />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
-    flexGrow: 1,
-    backgroundColor: '#0F172A',
+    flex: 1,
+    backgroundColor: '#0a0f1d',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
-  header: {
-    fontSize: 26,
+  title: {
+    fontSize: 28,
     fontWeight: 'bold',
-    color: '#F8FAFC',
-    marginBottom: 10,
+    color: '#ffffff',
+    marginBottom: 8,
   },
-  gpsText: {
+  coords: {
+    color: '#64748b',
     fontSize: 14,
-    color: '#94A3B8',
     marginBottom: 40,
   },
   sosButton: {
-    backgroundColor: '#EF4444',
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    alignItems: 'center',
+    width: 190,
+    height: 190,
+    borderRadius: 95,
+    backgroundColor: '#dc2626',
     justifyContent: 'center',
-    elevation: 8,
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#ef4444',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.5,
+    shadowRadius: 12,
   },
-  disabledButton: {
-    backgroundColor: '#7F1D1D',
-  },
-  sosButtonText: {
-    color: '#FFFFFF',
-    fontSize: 22,
+  sosText: {
+    color: '#ffffff',
+    fontSize: 34,
     fontWeight: '900',
-    letterSpacing: 1,
+    letterSpacing: 2,
   },
-  alertCard: {
-    marginTop: 40,
-    backgroundColor: '#1E293B',
-    padding: 20,
+  volunteerButton: {
+    marginTop: 30,
+    backgroundColor: '#10b981',
+    paddingVertical: 14,
+    paddingHorizontal: 28,
     borderRadius: 12,
-    width: '100%',
-    borderLeftWidth: 5,
-    borderLeftColor: '#F59E0B',
+    width: 260,
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
-  alertTitle: {
-    color: '#F59E0B',
-    fontWeight: 'bold',
+  volunteerButtonText: {
+    color: '#ffffff',
     fontSize: 16,
-    marginBottom: 5,
-  },
-  alertBody: {
-    color: '#E2E8F0',
-    fontSize: 14,
-    marginBottom: 4,
-  },
-  alertCoords: {
-    color: '#64748B',
-    fontSize: 12,
-    marginTop: 5,
+    fontWeight: '700',
   },
 });

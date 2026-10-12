@@ -1,17 +1,16 @@
 import { pool } from '../config/db.js';
 import { getIO } from '../config/socket.js';
 
-export interface CreateRequestDT0 {
-    beneficiaryId: string;
-    title: string;
-    description?: string;
-    latitude: number;
-    longitude: number;
+export interface CreateRequestDTO {
+  beneficiaryId: string;
+  title: string;
+  description?: string;
+  latitude: number;
+  longitude: number;
 }
 
 export class RequestService {
-
-    // 1. Un voluntar preia cererea
+  // 1. Un voluntar preia cererea
   static async assignVolunteer(requestId: string, volunteerId: string) {
     const query = `
       UPDATE assistance_requests
@@ -79,9 +78,9 @@ export class RequestService {
       client.release();
     }
   }
-    //aici creaza o cerere de SOS si converteste coordonatele in tip geospatial postgis
-   // Creeaza o cerere SOS si converteste coordonatele in tip geospațial PostGIS
-  static async createRequest(data: CreateRequestDT0) {
+
+  // 3. Creare cerere SOS + conversie coordonate PostGIS + notificare Socket.io
+  static async createRequest(data: CreateRequestDTO) {
     const query = `
       INSERT INTO assistance_requests (
         beneficiary_id,
@@ -118,36 +117,9 @@ export class RequestService {
     ];
 
     const result = await pool.query(query, values);
-    return result.rows[0];
-  }
-            // cauta cererile deschise intr-o raza data (default: 500 metri) fata de coordonatele trimise
-            static async getNearbyRequests(latitude: number, longitude: number, radiusMeters: number = 500) {
-                const query = `
-                    SELECT
-                        id,
-                        beneficiary_id,
-                        title,
-                        description,
-                        status,
-                        ST_Y(location::geometry) AS latitude,
-                        ST_X(location::geometry) AS longitude,
-                        ROUND(ST_Distance(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography):: numeric, 1) AS distance_meters,
-                        created_at
-                    FROM assistance_requests
-                    WHERE
-                        status = 'open'
-                        AND ST_Dwithin(
-                            location,
-                            ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
-                            $3
-                        )
-                    ORDER BY distance_meters ASC;
-                `;
-                const values = [longitude, latitude, radiusMeters];
-                const result = await pool.query(query, values);
-                const newRequest = result.rows[0];
+    const newRequest = result.rows[0];
 
-    // Emite alerta SOS catre toti voluntarii conectati
+    // Emite alerta SOS prin Socket.io catre voluntari
     try {
       const io = getIO();
       io.to('volunteers_room').emit('new_sos_alert', {
@@ -164,8 +136,34 @@ export class RequestService {
     }
 
     return newRequest;
-                return result.rows;
-            }
-        }
+  }
 
-    
+  // 4. Interogare cereri active in raza specificata (PostGIS)
+  static async getNearbyRequests(latitude: number, longitude: number, radiusMeters: number = 5000) {
+    const query = `
+      SELECT
+        id,
+        beneficiary_id,
+        title,
+        description,
+        status,
+        ST_Y(location::geometry) AS latitude,
+        ST_X(location::geometry) AS longitude,
+        ROUND(ST_Distance(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography)::numeric, 1) AS distance_meters,
+        created_at
+      FROM assistance_requests
+      WHERE
+        status = 'OPEN'
+        AND ST_DWithin(
+          location,
+          ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
+          $3
+        )
+      ORDER BY distance_meters ASC;
+    `;
+
+    const values = [longitude, latitude, radiusMeters];
+    const result = await pool.query(query, values);
+    return result.rows;
+  }
+}

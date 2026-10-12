@@ -25,3 +25,8 @@ CREATE TABLE IF NOT EXISTS assistance_requests (
 );
 
 CREATE INDEX IF NOT EXISTS idx_requests_location ON assistance_requests USING GIST (location);
+INSERT INTO users (id, full_name, email, phone, role)
+VALUES 
+  ('00000000-0000-0000-0000-000000000001', 'Beneficiar Test', 'beneficiar@test.com', '0700000001', 'BENEFICIARY'),
+  ('00000000-0000-0000-0000-000000000002', 'Voluntar Test', 'voluntar@test.com', '0700000002', 'VOLUNTEER')
+ON CONFLICT (id) DO NOTHING;

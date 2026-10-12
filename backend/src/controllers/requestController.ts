@@ -30,26 +30,31 @@ export class RequestController {
 
   static async getNearby(req: Request, res: Response): Promise<void> {
     try {
-      const { lat, lng, radius } = req.query;
+      const lat = req.query.lat || req.query.latitude;
+      const lng = req.query.lng || req.query.longitude;
+      const radius = req.query.radius || req.query.radiusMeters;
 
       if (!lat || !lng) {
         res.status(400).json({
-          error: 'Parametrii lat si lng sunt obligatorii.',
+          error: 'Coordonatele (lat/latitude si lng/longitude) sunt obligatorii.',
         });
         return;
       }
 
-      const radiusMeters = radius ? Number(radius) : 500;
-      const requests = await RequestService.getNearbyRequests(
+      const radiusMeters = radius ? Number(radius) : 5000;
+      const rawRequests = await RequestService.getNearbyRequests(
         Number(lat),
         Number(lng),
         radiusMeters
       );
 
+      // Protectie absoluta impotriva valorilor undefined sau null
+      const safeRequests = Array.isArray(rawRequests) ? rawRequests : [];
+
       res.json({
-        count: requests.length,
+        count: safeRequests.length,
         radius_meters: radiusMeters,
-        data: requests,
+        data: safeRequests,
       });
     } catch (error: any) {
       console.error('Eroare cautare cereri apropiate:', error);
