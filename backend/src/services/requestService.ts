@@ -166,4 +166,16 @@ export class RequestService {
     const result = await pool.query(query, values);
     return result.rows;
   }
+
+  // 5. Preluare istoric mesaje pentru o cerere
+  static async getMessagesByRequestId(requestId: string) {
+    const query = `
+      SELECT id, request_id, sender_id, message, created_at 
+      FROM request_messages 
+      WHERE request_id = $1 
+      ORDER BY created_at ASC;
+    `;
+    const result = await pool.query(query, [requestId]);
+    return result.rows;
+  }
 }

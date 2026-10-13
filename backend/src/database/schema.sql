@@ -30,3 +30,12 @@ VALUES
   ('00000000-0000-0000-0000-000000000001', 'Beneficiar Test', 'beneficiar@test.com', '0700000001', 'BENEFICIARY'),
   ('00000000-0000-0000-0000-000000000002', 'Voluntar Test', 'voluntar@test.com', '0700000002', 'VOLUNTEER')
 ON CONFLICT (id) DO NOTHING;
+CREATE TABLE IF NOT EXISTS request_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    request_id UUID NOT NULL REFERENCES assistance_requests(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    message TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_request_messages_req_id ON request_messages(request_id);

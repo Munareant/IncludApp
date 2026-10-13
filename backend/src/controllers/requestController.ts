@@ -48,7 +48,6 @@ export class RequestController {
         radiusMeters
       );
 
-      // Protectie absoluta impotriva valorilor undefined sau null
       const safeRequests = Array.isArray(rawRequests) ? rawRequests : [];
 
       res.json({
@@ -93,6 +92,16 @@ export class RequestController {
       res.json({ message: 'Cerere finalizata cu succes! +50 puncte adaugate.', data: completed });
     } catch (error: any) {
       res.status(400).json({ error: error.message });
+    }
+  }
+
+  static async getMessages(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const messages = await RequestService.getMessagesByRequestId(id as string);
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   }
 }
