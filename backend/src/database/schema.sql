@@ -39,3 +39,9 @@ CREATE TABLE IF NOT EXISTS request_messages (
 );
 
 CREATE INDEX IF NOT EXISTS idx_request_messages_req_id ON request_messages(request_id);
+
+INSERT INTO users(id, name, email, phone, role, volunteer_points)
+VALUES
+('00000000-0000-0000-0000-000000000001', 'Beneficiar Test', 'beneficiar@test.com', '0700000001', 'BENEFICIARY', 0),
+('00000000-0000-0000-0000-000000000002', 'Voluntar Test', 'voluntar@test.com', '0700000002', 'VOLUNTEER', 0)
+ON CONFLICT (id) DO NOTHING;

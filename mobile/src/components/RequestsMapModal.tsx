@@ -3,7 +3,6 @@ import { StyleSheet, View, Text, Modal, TouchableOpacity, ActivityIndicator, Ale
 import MapView, { Marker, Circle, Callout } from 'react-native-maps';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
-import { QRScannerModal } from './QRScannerModal';
 
 interface RequestItem {
   id: string;
@@ -20,8 +19,6 @@ interface RequestsMapModalProps {
   userLocation: { latitude: number; longitude: number } | null;
 }
 
-const CURRENT_VOLUNTEER_ID = '00000000-0000-0000-0000-000000000002';
-
 export const RequestsMapModal: React.FC<RequestsMapModalProps> = ({
   visible,
   onClose,
@@ -29,8 +26,6 @@ export const RequestsMapModal: React.FC<RequestsMapModalProps> = ({
 }) => {
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [loading, setLoading] = useState(false);
-  const [activeRequestId, setActiveRequestId] = useState<string | null>(null);
-  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     if (visible && userLocation) {
@@ -71,19 +66,10 @@ export const RequestsMapModal: React.FC<RequestsMapModalProps> = ({
   const handleAssign = async (requestId: string) => {
     try {
       await axios.patch(`${API_BASE_URL}/api/requests/${requestId}/assign`, {
-        volunteerId: CURRENT_VOLUNTEER_ID,
+        volunteerId: '00000000-0000-0000-0000-000000000002',
       });
 
-      setActiveRequestId(requestId);
-
-      Alert.alert(
-        'Succes!',
-        'Ai preluat cererea de asistență! Când ajungi la beneficiar, apasă pe butonul de scanare QR pentru validare.',
-        [
-          { text: 'Mai târziu', style: 'cancel' },
-          { text: 'Scanează QR acum', onPress: () => setShowScanner(true) },
-        ]
-      );
+      Alert.alert('Succes!', 'Ai preluat cererea de asistență. Mergi la beneficiar și scanează codul QR.');
       fetchNearbyRequests();
     } catch (error: any) {
       Alert.alert(
@@ -153,25 +139,9 @@ export const RequestsMapModal: React.FC<RequestsMapModalProps> = ({
           </Text>
         </TouchableOpacity>
 
-        {activeRequestId && (
-          <TouchableOpacity style={styles.scannerButton} onPress={() => setShowScanner(true)}>
-            <Text style={styles.buttonText}>📷 Scanează QR Misiune (+50 pct)</Text>
-          </TouchableOpacity>
-        )}
-
         <TouchableOpacity style={styles.closeButton} onPress={onClose}>
           <Text style={styles.buttonText}>Închide Harta</Text>
         </TouchableOpacity>
-
-        <QRScannerModal
-          visible={showScanner}
-          onClose={() => setShowScanner(false)}
-          targetRequestId={activeRequestId || undefined}
-          onSuccess={() => {
-            setActiveRequestId(null);
-            fetchNearbyRequests();
-          }}
-        />
       </View>
     </Modal>
   );
@@ -207,16 +177,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 20,
     elevation: 5,
-  },
-  scannerButton: {
-    position: 'absolute',
-    bottom: 100,
-    alignSelf: 'center',
-    backgroundColor: '#16a34a',
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    elevation: 6,
   },
   closeButton: {
     position: 'absolute',
