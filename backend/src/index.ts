@@ -5,6 +5,7 @@ import dotenv from 'dotenv';
 import { pool } from './config/db.js';
 import { initSocket } from './config/socket.js';
 import requestRoutes from './routes/requestRoutes.js';
+import authRoutes from './routes/authRoutes.js';
 
 dotenv.config();
 
@@ -20,6 +21,7 @@ app.use(express.json());
 
 // Rute aplicatie
 app.use('/api/requests', requestRoutes);
+app.use('/api/auth', authRoutes);
 
 // Endpoint Health Check
 app.get('/api/health', async (req: Request, res: Response): Promise<void> => {
@@ -35,7 +37,7 @@ app.get('/api/health', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
-// Pornim serverul HTTP (care contine atat Express cat si Socket.io)
+// Pornim serverul HTTP
 server.listen(port, () => {
   console.log(`Serverul IncludApp ruleaza la adresa: http://localhost:${port}`);
 });
