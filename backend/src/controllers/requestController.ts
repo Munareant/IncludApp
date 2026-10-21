@@ -104,4 +104,15 @@ export class RequestController {
       res.status(500).json({ error: error.message });
     }
   }
+
+  static async getUserRequests(req: Request, res: Response): Promise<void> {
+    try {
+      const { id } = req.params;
+      const requests = await RequestService.getUserRequestsHistory(id as string);
+      res.json({ requests });
+    } catch (error: any) {
+      console.error('Eroare preluare istoric utilizator:', error);
+      res.status(500).json({ error: error.message });
+    }
+  }
 }

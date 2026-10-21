@@ -178,4 +178,28 @@ export class RequestService {
     const result = await pool.query(query, [requestId]);
     return result.rows;
   }
+
+  // 6. Preluare istoric cereri pentru un utilizator
+  static async getUserRequestsHistory(userId: string): Promise<any[]> {
+    const query = `
+      SELECT 
+        r.id,
+        r.title,
+        r.description,
+        r.status,
+        r.created_at,
+        r.completed_at,
+        b.full_name as beneficiary_name,
+        v.full_name as volunteer_name
+      FROM assistance_requests r
+      LEFT JOIN users b ON r.beneficiary_id = b.id
+      LEFT JOIN users v ON r.volunteer_id = v.id
+      WHERE r.beneficiary_id = $1 OR r.volunteer_id = $1
+      ORDER BY r.created_at DESC
+      LIMIT 20;
+    `;
+
+    const result = await pool.query(query, [userId]);
+    return result.rows;
+  }
 }
