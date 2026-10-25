@@ -7,6 +7,7 @@ export interface CreateRequestDTO {
   description?: string;
   latitude: number;
   longitude: number;
+  disabilityType?: 'VISUAL' | 'DEAF_MUTE' | 'LOCOMOTOR' | 'GENERAL';
 }
 
 export class RequestService {
@@ -88,13 +89,15 @@ export class RequestService {
         description,
         location,
         qr_validation_code
+        disability_type
       )
       VALUES (
         $1,
         $2,
         $3,
         ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography,
-        md5(random()::text)
+        md5(random()::text),
+        $6
       )
       RETURNING 
         id,
@@ -114,6 +117,7 @@ export class RequestService {
       data.description || null,
       data.longitude, // $4: X = Longitudine
       data.latitude,  // $5: Y = Latitudine
+      data.disabilityType || 'GENERAL',
     ];
 
     const result = await pool.query(query, values);

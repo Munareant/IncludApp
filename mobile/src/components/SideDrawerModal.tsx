@@ -1,25 +1,21 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React from 'react';
 import {
   StyleSheet,
-  Text,
   View,
-  Modal,
+  Text,
   TouchableOpacity,
-  TouchableWithoutFeedback,
-  Animated,
-  Dimensions,
+  Modal,
   ScrollView,
+  Switch,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DRAWER_WIDTH = SCREEN_WIDTH * 0.78;
 
 interface SideDrawerModalProps {
   visible: boolean;
   onClose: () => void;
   currentUser: any;
+  volunteerPoints: number;
   onLogout: () => void;
 }
 
@@ -27,179 +23,143 @@ export const SideDrawerModal: React.FC<SideDrawerModalProps> = ({
   visible,
   onClose,
   currentUser,
+  volunteerPoints,
   onLogout,
 }) => {
-  // Stare internă pentru a ține Modal-ul deschis până se termină animația de închidere
-  const [modalVisible, setModalVisible] = useState(visible);
-
-  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      setModalVisible(true);
-      // Deschidere sincronizată: fundalul se întunecă treptat, meniul glisează elastic
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 280,
-          useNativeDriver: true,
-        }),
-        Animated.spring(slideAnim, {
-          toValue: 0,
-          damping: 22,
-          stiffness: 170,
-          mass: 0.9,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      // Închidere fluidă: meniul se retrage complet în stânga înainte de a ascunde modalul
-      Animated.parallel([
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.timing(slideAnim, {
-          toValue: -DRAWER_WIDTH,
-          duration: 240,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setModalVisible(false);
-      });
-    }
-  }, [visible, slideAnim, fadeAnim]);
-
-  const handleAction = (title: string) => {
-    onClose();
-    setTimeout(() => {
-      Alert.alert(title, `Secțiunea "${title}" este pregătită pentru configurare.`);
-    }, 280);
-  };
+  const [highContrast, setHighContrast] = React.useState(false);
+  const [voiceAssist, setVoiceAssist] = React.useState(false);
 
   const initialLetter = currentUser?.fullName
     ? currentUser.fullName.charAt(0).toUpperCase()
     : 'U';
 
-  const userDisplayName = currentUser?.fullName || currentUser?.full_name || 'Utilizator';
-  const userDisplayRole = currentUser?.role === 'BENEFICIARY' ? 'Beneficiar' : 'Voluntar Comunitar';
+  const showAboutDialog = () => {
+    Alert.alert(
+      'Despre IncludApp',
+      'IncludApp v1.0.0\nPlatformă Smart City pentru asistență comunitară în timp real.\n\nProiect de Licență 2026',
+      [{ text: 'Închide', style: 'cancel' }]
+    );
+  };
+
+  const showGuideDialog = () => {
+    Alert.alert(
+      'Ghid Utilizare & QR',
+      '1. Beneficiarul emite o alertă SOS cu locația GPS.\n2. Voluntarul din apropiere preia cererea.\n3. La întâlnire, voluntarul scanează codul QR de pe telefonul beneficiarului.\n4. Misiunea este validată instant (+50 puncte).',
+      [{ text: 'Am înțeles', style: 'default' }]
+    );
+  };
 
   return (
     <Modal
-      transparent
-      visible={modalVisible}
-      animationType="none"
+      visible={visible}
+      animationType="fade"
+      transparent={true}
       onRequestClose={onClose}
     >
       <View style={styles.overlay}>
-        {/* Fundal fumuriu animat (Fade In / Fade Out) */}
-        <TouchableWithoutFeedback onPress={onClose}>
-          <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]} />
-        </TouchableWithoutFeedback>
+        {/* Fundal întunecat pentru închidere la tap exterior */}
+        <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={onClose} />
 
-        {/* Panoul lateral animat cu glisare din afara ecranului */}
-        <Animated.View
-          style={[
-            styles.drawerContainer,
-            { transform: [{ translateX: slideAnim }] },
-          ]}
-        >
-          {/* Antet Profil */}
-          <View style={styles.profileHeader}>
+        {/* Panoul lateral */}
+        <View style={styles.drawerContainer}>
+          {/* Header profil în sertar */}
+          <View style={styles.header}>
             <View style={styles.avatar}>
               <Text style={styles.avatarText}>{initialLetter}</Text>
             </View>
-            <Text style={styles.userName} numberOfLines={1}>
-              {userDisplayName}
-            </Text>
-            <Text style={styles.userRole}>
-              {userDisplayRole}
-            </Text>
+            <View style={styles.headerInfo}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {currentUser?.fullName || currentUser?.full_name || 'Utilizator'}
+              </Text>
+              <Text style={styles.userRole}>
+                {currentUser?.role === 'BENEFICIARY' ? 'Beneficiar' : 'Voluntar Activ'}
+              </Text>
+              <Text style={styles.pointsBadge}>⭐ {volunteerPoints} puncte</Text>
+            </View>
+            <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={24} color="#94a3b8" />
+            </TouchableOpacity>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollBody}>
-            {/* Secțiunea Comunități */}
-            <Text style={styles.sectionHeader}>COMUNITATE</Text>
+          <ScrollView style={styles.menuScroll} showsVerticalScrollIndicator={false}>
+            {/* Secțiunea: Accesibilitate */}
+            <Text style={styles.sectionTitle}>ACCESIBILITATE & ASISTENȚĂ</Text>
+            
+            <View style={styles.menuItemRow}>
+              <View style={styles.iconWithText}>
+                <Ionicons name="contrast-outline" size={20} color="#10b981" />
+                <Text style={styles.menuItemText}>Contrast Ridicat</Text>
+              </View>
+              <Switch
+                value={highContrast}
+                onValueChange={setHighContrast}
+                thumbColor={highContrast ? '#10b981' : '#64748b'}
+                trackColor={{ false: '#1e293b', true: '#064e3b' }}
+              />
+            </View>
 
-            <TouchableOpacity
-              style={styles.actionCardHighlight}
-              onPress={() => handleAction('Creare Comunitate')}
-              activeOpacity={0.8}
-            >
-              <Ionicons name="add-circle-outline" size={22} color="#10b981" />
-              <Text style={styles.actionTextHighlight}>Creează Comunitate</Text>
+            <View style={styles.menuItemRow}>
+              <View style={styles.iconWithText}>
+                <Ionicons name="volume-high-outline" size={20} color="#10b981" />
+                <Text style={styles.menuItemText}>Ghidare Vocală (TalkBack)</Text>
+              </View>
+              <Switch
+                value={voiceAssist}
+                onValueChange={setVoiceAssist}
+                thumbColor={voiceAssist ? '#10b981' : '#64748b'}
+                trackColor={{ false: '#1e293b', true: '#064e3b' }}
+              />
+            </View>
+
+            <View style={styles.divider} />
+
+            {/* Secțiunea: Siguranță & Ghid */}
+            <Text style={styles.sectionTitle}>SIGURANȚĂ & GHID</Text>
+
+            <TouchableOpacity style={styles.menuButton} onPress={showGuideDialog}>
+              <Ionicons name="shield-checkmark-outline" size={20} color="#38bdf8" />
+              <Text style={styles.menuButtonText}>Cum funcționează codul QR</Text>
+              <Ionicons name="chevron-forward" size={16} color="#475569" />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleAction('Comunitățile mele')}
-              activeOpacity={0.7}
+              style={styles.menuButton}
+              onPress={() => Alert.alert('Urgență 112', 'În caz de pericol iminent, apelați direct numărul unic de urgență 112.')}
             >
-              <Ionicons name="people-outline" size={20} color="#94a3b8" />
-              <Text style={styles.menuText}>Comunitățile Mele</Text>
+              <Ionicons name="call-outline" size={20} color="#ef4444" />
+              <Text style={[styles.menuButtonText, { color: '#fca5a5' }]}>Apel Direct 112</Text>
+              <Ionicons name="chevron-forward" size={16} color="#475569" />
             </TouchableOpacity>
 
-            {/* Secțiunea Suport & Urgență */}
-            <Text style={styles.sectionHeader}>SUPORT & ASISTENȚĂ</Text>
+            <View style={styles.divider} />
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleAction('Ghid SOS')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="shield-checkmark-outline" size={20} color="#94a3b8" />
-              <Text style={styles.menuText}>Ghid SOS & Prim Ajutor</Text>
-            </TouchableOpacity>
+            {/* Secțiunea: Proiect & Licență */}
+            <Text style={styles.sectionTitle}>DESPRE APLICAȚIE</Text>
 
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleAction('Numere de Urgență')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="call-outline" size={20} color="#94a3b8" />
-              <Text style={styles.menuText}>Numere de Urgență (112)</Text>
-            </TouchableOpacity>
-
-            {/* Secțiunea Setări */}
-            <Text style={styles.sectionHeader}>PREFERINȚE</Text>
-
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleAction('Setări')}
-              activeOpacity={0.7}
-            >
-              <Ionicons name="settings-outline" size={20} color="#94a3b8" />
-              <Text style={styles.menuText}>Setări Aplicație</Text>
+            <TouchableOpacity style={styles.menuButton} onPress={showAboutDialog}>
+              <Ionicons name="information-circle-outline" size={20} color="#a855f7" />
+              <Text style={styles.menuButtonText}>Despre IncludApp (Licență 2026)</Text>
+              <Ionicons name="chevron-forward" size={16} color="#475569" />
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => handleAction('Despre')}
-              activeOpacity={0.7}
+              style={styles.menuButton}
+              onPress={() => Alert.alert('Confidențialitate', 'Datele de localizare sunt utilizate strict pe durata cererilor active conform GDPR.')}
             >
-              <Ionicons name="information-circle-outline" size={20} color="#94a3b8" />
-              <Text style={styles.menuText}>Despre IncludApp</Text>
+              <Ionicons name="lock-closed-outline" size={20} color="#94a3b8" />
+              <Text style={styles.menuButtonText}>Confidențialitate & GDPR</Text>
+              <Ionicons name="chevron-forward" size={16} color="#475569" />
             </TouchableOpacity>
           </ScrollView>
 
-          {/* Subsol Drawer */}
-          <View style={styles.drawerFooter}>
-            <TouchableOpacity
-              style={styles.logoutBtn}
-              onPress={() => {
-                onClose();
-                onLogout();
-              }}
-              activeOpacity={0.7}
-            >
+          {/* Footer cu Logout */}
+          <View style={styles.footer}>
+            <TouchableOpacity style={styles.logoutButton} onPress={onLogout}>
               <Ionicons name="log-out-outline" size={20} color="#ef4444" />
               <Text style={styles.logoutText}>Deconectare cont</Text>
             </TouchableOpacity>
-            <Text style={styles.footerBrand}>v1.0 • Munăreanț Dan Ioan</Text>
           </View>
-        </Animated.View>
+        </View>
       </View>
     </Modal>
   );
@@ -209,125 +169,126 @@ const styles = StyleSheet.create({
   overlay: {
     flex: 1,
     flexDirection: 'row',
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
   },
   backdrop: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    flex: 1,
   },
   drawerContainer: {
-    width: DRAWER_WIDTH,
+    width: '80%',
+    maxWidth: 320,
+    backgroundColor: '#0b1329',
     height: '100%',
-    backgroundColor: '#0c1322',
-    borderRightWidth: 1,
-    borderRightColor: 'rgba(255, 255, 255, 0.08)',
-    paddingTop: 54,
-    shadowColor: '#000',
-    shadowOffset: { width: 4, height: 0 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  profileHeader: {
+    paddingTop: 50,
     paddingHorizontal: 20,
-    paddingBottom: 22,
+    paddingBottom: 20,
+    borderLeftWidth: 1,
+    borderLeftColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 20,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
   },
   avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#1e293b',
     borderWidth: 2,
     borderColor: '#10b981',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 10,
+    marginRight: 12,
   },
   avatarText: {
-    fontSize: 22,
-    fontWeight: 'bold',
     color: '#ffffff',
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  headerInfo: {
+    flex: 1,
   },
   userName: {
-    fontSize: 18,
-    fontWeight: 'bold',
     color: '#ffffff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   userRole: {
-    fontSize: 12,
     color: '#10b981',
+    fontSize: 12,
     marginTop: 2,
-    fontWeight: '600',
   },
-  scrollBody: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 20,
-  },
-  sectionHeader: {
+  pointsBadge: {
+    color: '#f59e0b',
     fontSize: 11,
-    color: '#64748b',
-    fontWeight: '700',
-    letterSpacing: 1.2,
-    marginTop: 18,
-    marginBottom: 8,
-    paddingHorizontal: 6,
+    fontWeight: '600',
+    marginTop: 2,
   },
-  actionCardHighlight: {
+  menuScroll: {
+    flex: 1,
+    marginVertical: 15,
+  },
+  sectionTitle: {
+    color: '#64748b',
+    fontSize: 11,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginTop: 15,
+    marginBottom: 8,
+  },
+  menuItemRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(16, 185, 129, 0.12)',
-    borderWidth: 1,
-    borderColor: 'rgba(16, 185, 129, 0.25)',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    paddingVertical: 10,
   },
-  actionTextHighlight: {
-    color: '#10b981',
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  menuItem: {
+  iconWithText: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingVertical: 11,
-    paddingHorizontal: 10,
-    borderRadius: 10,
   },
-  menuText: {
+  menuItemText: {
     color: '#e2e8f0',
     fontSize: 14,
-    fontWeight: '500',
   },
-  drawerFooter: {
-    paddingHorizontal: 20,
-    paddingVertical: 18,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  logoutBtn: {
+  menuButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    paddingVertical: 6,
+    paddingVertical: 12,
+    gap: 12,
+  },
+  menuButtonText: {
+    flex: 1,
+    color: '#e2e8f0',
+    fontSize: 14,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    marginVertical: 10,
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 15,
+  },
+  logoutButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    gap: 8,
+    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(239, 68, 68, 0.25)',
   },
   logoutText: {
     color: '#ef4444',
     fontSize: 14,
     fontWeight: '600',
-  },
-  footerBrand: {
-    fontSize: 11,
-    color: '#475569',
-    marginTop: 12,
   },
 });
