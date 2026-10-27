@@ -1,52 +1,62 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { HeaderBar } from '../components/HeaderBar';
 
 interface ProfileScreenProps {
   currentUser: any;
   volunteerPoints: number;
   onLogout: () => void;
+  onOpenMenu: () => void;
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   currentUser,
   volunteerPoints,
   onLogout,
+  onOpenMenu,
 }) => {
   return (
-    <View style={styles.container}>
-      {/* Avatar Placeholder */}
-      <View style={styles.avatarContainer}>
-        <Text style={styles.avatarText}>
-          {currentUser?.fullName ? currentUser.fullName[0].toUpperCase() : 'U'}
+    <View style={styles.screen}>
+      <HeaderBar title="Profil Utilizator" onOpenMenu={onOpenMenu} />
+
+      <View style={styles.content}>
+        {/* Avatar Placeholder */}
+        <View style={styles.avatarContainer}>
+          <Text style={styles.avatarText}>
+            {currentUser?.fullName ? currentUser.fullName[0].toUpperCase() : 'U'}
+          </Text>
+        </View>
+
+        <Text style={styles.userName}>
+          {currentUser?.fullName || currentUser?.full_name || 'Utilizator'}
         </Text>
+        <Text style={styles.userRole}>
+          Rol: {currentUser?.role === 'BENEFICIARY' ? 'Beneficiar' : 'Voluntar'}
+        </Text>
+        <Text style={styles.userEmail}>{currentUser?.email || 'email@exemplu.com'}</Text>
+
+        {/* Card Punctaj */}
+        <View style={styles.statsCard}>
+          <Text style={styles.statsLabel}>Total puncte voluntar</Text>
+          <Text style={styles.statsValue}>⭐ {volunteerPoints}</Text>
+        </View>
+
+        {/* Buton Deconectare */}
+        <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
+          <Text style={styles.logoutBtnText}>Deconectare cont</Text>
+        </TouchableOpacity>
       </View>
-
-      <Text style={styles.userName}>
-        {currentUser?.fullName || currentUser?.full_name || 'Utilizator'}
-      </Text>
-      <Text style={styles.userRole}>
-        Rol: {currentUser?.role === 'BENEFICIARY' ? 'Beneficiar' : 'Voluntar'}
-      </Text>
-      <Text style={styles.userEmail}>{currentUser?.email || 'email@exemplu.com'}</Text>
-
-      {/* Card Punctaj */}
-      <View style={styles.statsCard}>
-        <Text style={styles.statsLabel}>Total puncte voluntar</Text>
-        <Text style={styles.statsValue}>⭐ {volunteerPoints}</Text>
-      </View>
-
-      {/* Buton Deconectare */}
-      <TouchableOpacity style={styles.logoutBtn} onPress={onLogout}>
-        <Text style={styles.logoutBtnText}>Deconectare cont</Text>
-      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: '#0a0f1d',
+  },
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

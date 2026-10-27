@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
+import { DisabilitySelector, DisabilityType } from '../components/DisabilitySelector';
 
 interface HomeScreenProps {
   currentUser: any;
   location: { latitude: number; longitude: number } | null;
   loading: boolean;
-  onSendSOS: () => void;
+  onSendSOS: (type: DisabilityType) => void;
   volunteerPoints: number;
   onOpenMenu: () => void;
 }
@@ -19,10 +21,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   volunteerPoints,
   onOpenMenu,
 }) => {
+  const [disabilityType, setDisabilityType] = useState<DisabilityType>('GENERAL');
+
+  const handlePressSOS = async () => {
+    // Feedback haptic puternic de succes/confirmare pentru accesibilitate
+    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    onSendSOS(disabilityType);
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.topBar}>
-        <TouchableOpacity style={styles.menuButton} onPress={onOpenMenu} activeOpacity={0.7}>
+        <TouchableOpacity 
+          style={styles.menuButton} 
+          onPress={onOpenMenu} 
+          activeOpacity={0.7}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel="Deschide meniul lateral"
+        >
           <Ionicons name="menu-outline" size={26} color="#ffffff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>IncludApp</Text>
@@ -36,7 +53,7 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
       )}
 
       <View style={styles.pointsBadge}>
-        <Text style={styles.pointsText}>⭐ Puncte voluntar: {volunteerPoints}</Text>
+        <Text style={styles.pointsText}>⭐ Puncte: {volunteerPoints}</Text>
       </View>
 
       {location ? (
@@ -47,12 +64,25 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
         <Text style={styles.coords}>Se caută semnal GPS...</Text>
       )}
 
+      {/* Selectorul de nevoi specifice */}
+      <View style={styles.selectorWrapper}>
+        <DisabilitySelector
+          selectedType={disabilityType}
+          onSelect={(type) => setDisabilityType(type)}
+        />
+      </View>
+
+      {/* Butonul SOS */}
       <View style={styles.sosContainer}>
         <TouchableOpacity
           style={styles.sosButton}
-          onPress={onSendSOS}
+          onPress={handlePressSOS}
           disabled={loading}
           activeOpacity={0.8}
+          accessible={true}
+          accessibilityRole="button"
+          accessibilityLabel={`Trimite alertă SOS de urgență pentru asistență de tip ${disabilityType}`}
+          accessibilityHint="Apasă pentru a trimite locația către voluntarii din apropiere"
         >
           {loading ? (
             <ActivityIndicator color="#fff" size="large" />
@@ -107,8 +137,8 @@ const styles = StyleSheet.create({
   userGreeting: {
     fontSize: 14,
     color: '#94a3b8',
-    marginTop: 40,
-    marginBottom: 8,
+    marginTop: 20,
+    marginBottom: 6,
   },
   pointsBadge: {
     backgroundColor: 'rgba(245, 158, 11, 0.15)',
@@ -117,7 +147,7 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 14,
     borderRadius: 20,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   pointsText: {
     color: '#f59e0b',
@@ -126,17 +156,22 @@ const styles = StyleSheet.create({
   },
   coords: {
     color: '#64748b',
-    fontSize: 13,
-    marginBottom: 24,
+    fontSize: 12,
+    marginBottom: 10,
+  },
+  selectorWrapper: {
+    width: '100%',
+    paddingHorizontal: 10,
+    marginBottom: 10,
   },
   sosContainer: {
     alignItems: 'center',
     justifyContent: 'center',
   },
   sosButton: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: 170,
+    height: 170,
+    borderRadius: 85,
     backgroundColor: '#dc2626',
     justifyContent: 'center',
     alignItems: 'center',
@@ -155,6 +190,6 @@ const styles = StyleSheet.create({
   sosHint: {
     color: '#94a3b8',
     fontSize: 13,
-    marginTop: 20,
+    marginTop: 16,
   },
 });

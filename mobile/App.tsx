@@ -32,6 +32,7 @@ import { BeneficiaryQRModal } from './src/components/BeneficiaryQRModal';
 import { ChatModal } from './src/components/ChatModal';
 import { AuthModal } from './src/components/AuthModal';
 import { SideDrawerModal } from './src/components/SideDrawerModal';
+import { DisabilityType } from './src/components/DisabilitySelector';
 
 const Tab = createBottomTabNavigator();
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -271,7 +272,7 @@ export default function App() {
     socket.on('new_sos_alert', (data) => {
       Alert.alert(
         'ALERTA SOS!',
-        `O persoana din apropiere are nevoie de ajutor!\nTip: ${data.category || 'Generala'}`
+        `O persoana din apropiere are nevoie de ajutor!\nTip: ${data.disabilityType || data.category || 'General'}`
       );
     });
 
@@ -280,11 +281,60 @@ export default function App() {
     };
   }, []);
 
-  const handleSendSOS = async () => {
+  const handleSendSOS = async (selectedDisability: DisabilityType = 'GENERAL') => {
     if (!location) {
       Alert.alert('Atenție', 'Se obțin coordonatele GPS. Te rugăm să aștepți câteva secunde.');
       return;
     }
+
+    <Tab.Navigator
+        tabBar={(props) => <SlidingTabBar {...props} />}
+        screenOptions={{ headerShown: false }}
+      >
+        <Tab.Screen name="Acasă">
+          {() => (
+            <HomeScreen
+              currentUser={currentUser}
+              location={location}
+              loading={loading}
+              onSendSOS={(selectedDisability) => handleSendSOS(selectedDisability)}
+              volunteerPoints={volunteerPoints}
+              onOpenMenu={() => setDrawerVisible(true)}
+            />
+          )}
+        </Tab.Screen>
+
+        <Tab.Screen name="Hartă">
+          {() => (
+            <MapScreen
+              onOpenMap={() => setMapVisible(true)}
+              onOpenScanner={() => setScannerVisible(true)}
+              onOpenMenu={() => setDrawerVisible(true)}
+            />
+          )}
+        </Tab.Screen>
+
+        <Tab.Screen name="Chat">
+          {() => (
+            <ChatScreen
+              onOpenChat={() => setChatVisible(true)}
+              activeRequestId={activeRequestId}
+              onOpenMenu={() => setDrawerVisible(true)}
+            />
+          )}
+        </Tab.Screen>
+
+        <Tab.Screen name="Profil">
+          {() => (
+            <ProfileScreen
+              currentUser={currentUser}
+              volunteerPoints={volunteerPoints}
+              onLogout={handleLogout}
+              onOpenMenu={() => setDrawerVisible(true)}
+            />
+          )}
+        </Tab.Screen>
+      </Tab.Navigator>
 
     setLoading(true);
     try {
@@ -292,10 +342,10 @@ export default function App() {
       const response = await axios.post(`${API_BASE_URL}/api/requests`, {
         beneficiaryId,
         title: 'Cerere SOS Urgenta',
-        category: 'URGENTA',
         description: 'Am nevoie de asistență imediată!',
         latitude: location.latitude,
         longitude: location.longitude,
+        disabilityType: selectedDisability,
       });
 
       const newRequestId = response.data?.request?.id || response.data?.id;
@@ -303,6 +353,7 @@ export default function App() {
       setQrModalVisible(true);
     } catch (error: any) {
       const backendMessage =
+        error.response?.data?.error ||
         error.response?.data?.message ||
         JSON.stringify(error.response?.data) ||
         error.message;
@@ -322,6 +373,7 @@ export default function App() {
     await SecureStore.deleteItemAsync('user_token');
     await SecureStore.deleteItemAsync('user_data');
     setCurrentUser(null);
+    setDrawerVisible(false);
     setAuthVisible(true);
   };
 
@@ -376,7 +428,7 @@ export default function App() {
               currentUser={currentUser}
               location={location}
               loading={loading}
-              onSendSOS={handleSendSOS}
+              onSendSOS={(selectedDisability) => handleSendSOS(selectedDisability)}
               volunteerPoints={volunteerPoints}
               onOpenMenu={() => setDrawerVisible(true)}
             />
@@ -388,6 +440,7 @@ export default function App() {
             <MapScreen
               onOpenMap={() => setMapVisible(true)}
               onOpenScanner={() => setScannerVisible(true)}
+              onOpenMenu={() => setDrawerVisible(true)}
             />
           )}
         </Tab.Screen>
@@ -397,6 +450,7 @@ export default function App() {
             <ChatScreen
               onOpenChat={() => setChatVisible(true)}
               activeRequestId={activeRequestId}
+              onOpenMenu={() => setDrawerVisible(true)}
             />
           )}
         </Tab.Screen>
@@ -407,6 +461,7 @@ export default function App() {
               currentUser={currentUser}
               volunteerPoints={volunteerPoints}
               onLogout={handleLogout}
+              onOpenMenu={() => setDrawerVisible(true)}
             />
           )}
         </Tab.Screen>
@@ -417,6 +472,7 @@ export default function App() {
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         currentUser={currentUser}
+        volunteerPoints={volunteerPoints}
         onLogout={handleLogout}
       />
 
@@ -548,7 +604,6 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginTop: 4,
   },
-  // TabBar cu pastila dinamica liquid glass
   customTabBarContainer: {
     flexDirection: 'row',
     backgroundColor: '#0a0f1d',

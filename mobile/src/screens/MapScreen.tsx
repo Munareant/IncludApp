@@ -1,38 +1,47 @@
 import React from 'react';
 import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import { HeaderBar } from '../components/HeaderBar';
 
 interface MapScreenProps {
   onOpenMap: () => void;
   onOpenScanner: () => void;
+  onOpenMenu: () => void;
 }
 
-export const MapScreen: React.FC<MapScreenProps> = ({ onOpenMap, onOpenScanner }) => {
+export const MapScreen: React.FC<MapScreenProps> = ({ onOpenMap, onOpenScanner, onOpenMenu }) => {
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Hartă & Intervenții</Text>
-      <Text style={styles.subtitle}>Găsește cereri de asistență active sau validează o misiune</Text>
+    <View style={styles.screen}>
+      <HeaderBar title="Hartă & Intervenții" onOpenMenu={onOpenMenu} />
 
-      <TouchableOpacity
-        style={[styles.actionBtn, { backgroundColor: '#0284c7' }]}
-        onPress={onOpenMap}
-      >
-        <Text style={styles.btnText}>🗺️ Deschide harta cererilor</Text>
-      </TouchableOpacity>
+      <View style={styles.content}>
+        <Text style={styles.title}>Hartă & Intervenții</Text>
+        <Text style={styles.subtitle}>Găsește cereri de asistență active sau validează o misiune</Text>
 
-      <TouchableOpacity
-        style={[styles.actionBtn, { backgroundColor: '#10b981', marginTop: 16 }]}
-        onPress={onOpenScanner}
-      >
-        <Text style={styles.btnText}>📷 Scanează cod QR misiune</Text>
-      </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#0284c7' }]}
+          onPress={onOpenMap}
+        >
+          <Text style={styles.btnText}>🗺️ Deschide harta cererilor</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.actionBtn, { backgroundColor: '#10b981', marginTop: 16 }]}
+          onPress={onOpenScanner}
+        >
+          <Text style={styles.btnText}>📷 Scanează cod QR misiune</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screen: {
     flex: 1,
     backgroundColor: '#0a0f1d',
+  },
+  content: {
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,

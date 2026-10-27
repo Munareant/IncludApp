@@ -80,7 +80,7 @@ export class RequestService {
     }
   }
 
-  // 3. Creare cerere SOS + conversie coordonate PostGIS + notificare Socket.io
+// 3. Creare cerere SOS + conversie coordonate PostGIS + notificare Socket.io
   static async createRequest(data: CreateRequestDTO) {
     const query = `
       INSERT INTO assistance_requests (
@@ -88,7 +88,7 @@ export class RequestService {
         title,
         description,
         location,
-        qr_validation_code
+        qr_validation_code,
         disability_type
       )
       VALUES (
@@ -104,6 +104,7 @@ export class RequestService {
         beneficiary_id,
         title,
         description,
+        disability_type,
         status,
         ST_Y(location::geometry) AS latitude,
         ST_X(location::geometry) AS longitude,
@@ -130,6 +131,7 @@ export class RequestService {
         id: newRequest.id,
         title: newRequest.title,
         description: newRequest.description,
+        disabilityType: newRequest.disability_type,
         latitude: newRequest.latitude,
         longitude: newRequest.longitude,
         createdAt: newRequest.created_at,
@@ -171,17 +173,37 @@ export class RequestService {
     return result.rows;
   }
 
-  // 5. Preluare istoric mesaje pentru o cerere
-  static async getMessagesByRequestId(requestId: string) {
-    const query = `
-      SELECT id, request_id, sender_id, message, created_at 
-      FROM request_messages 
-      WHERE request_id = $1 
-      ORDER BY created_at ASC;
-    `;
-    const result = await pool.query(query, [requestId]);
-    return result.rows;
+ static async sendMessage(requestId: string, senderId: string, messageText: string) {
+  // 1. Salvează mesajul utilizatorului
+  const insertQuery = `
+    INSERT INTO request_messages (request_id, sender_id, message, is_ai)
+    VALUES ($1, $2, $3, false)
+    RETURNING *;
+  `;
+  const result = await pool.query(insertQuery, [requestId, senderId, messageText]);
+  const userMessage = result.rows[0];
+
+  // Emite mesajul utilizatorului prin socket
+  const io = getIO();
+  io.to(`request_${requestId}`).emit('new_message', userMessage);
+
+  // 2. Răspuns AI integrat
+  if (messageText.toLowerCase().includes('@ai') || messageText.toLowerCase().includes('ajutor')) {
+    setTimeout(async () => {
+      const aiReplyText = `[IncludApp AI]: Am recepționat mesajul tău: "${messageText}". Dacă ai nevoie de sprijin de urgență, voluntarii din proximitate au fost deja alertați. Cum te pot ajuta în acest moment?`;
+      
+      const aiQuery = `
+        INSERT INTO request_messages (request_id, sender_id, message, is_ai)
+        VALUES ($1, NULL, $2, true)
+        RETURNING *;
+      `;
+      const aiRes = await pool.query(aiQuery, [requestId, aiReplyText]);
+      io.to(`request_${requestId}`).emit('new_message', aiRes.rows[0]);
+    }, 800);
   }
+
+  return userMessage;
+}
 
   // 6. Preluare istoric cereri pentru un utilizator
   static async getUserRequestsHistory(userId: string): Promise<any[]> {
