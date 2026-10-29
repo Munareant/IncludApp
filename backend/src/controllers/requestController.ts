@@ -4,7 +4,7 @@ import { RequestService } from '../services/requestService.js';
 export class RequestController {
   static async create(req: Request, res: Response): Promise<void> {
     try {
-      const { beneficiaryId, title, description, latitude, longitude } = req.body;
+      const { beneficiaryId, title, description, latitude, longitude, disabilityType } = req.body;
 
       if (!beneficiaryId || !title || latitude === undefined || longitude === undefined) {
         res.status(400).json({
@@ -19,6 +19,7 @@ export class RequestController {
         description,
         latitude: Number(latitude),
         longitude: Number(longitude),
+        disabilityType,
       });
 
       res.status(201).json(newRequest);

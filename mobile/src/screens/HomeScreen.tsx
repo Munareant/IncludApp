@@ -1,5 +1,12 @@
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useRef, useEffect } from 'react';
+import {
+  StyleSheet,
+  Text,
+  View,
+  TouchableOpacity,
+  ActivityIndicator,
+  PanResponder,
+} from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
 import { DisabilitySelector, DisabilityType } from '../components/DisabilitySelector';
@@ -11,6 +18,7 @@ interface HomeScreenProps {
   onSendSOS: (type: DisabilityType) => void;
   volunteerPoints: number;
   onOpenMenu: () => void;
+  onNavigateNext?: () => void; // Prop pentru trecerea la ecranul Hartă
 }
 
 export const HomeScreen: React.FC<HomeScreenProps> = ({
@@ -20,21 +28,43 @@ export const HomeScreen: React.FC<HomeScreenProps> = ({
   onSendSOS,
   volunteerPoints,
   onOpenMenu,
+  onNavigateNext,
 }) => {
   const [disabilityType, setDisabilityType] = useState<DisabilityType>('GENERAL');
 
+  // Păstrăm funcția de callback într-un ref sincronizat
+  const nextHandlerRef = useRef(onNavigateNext);
+  useEffect(() => {
+    nextHandlerRef.current = onNavigateNext;
+  }, [onNavigateNext]);
+
+const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Activăm gestul doar dacă mișcarea orizontală este clar mai mare decât cea verticală
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // Glisare spre stânga: degetul merge spre stânga (dx negativ)
+        if (gestureState.dx < -50 && nextHandlerRef.current) {
+          nextHandlerRef.current();
+        }
+      },
+    })
+  ).current;
+
   const handlePressSOS = async () => {
-    // Feedback haptic puternic de succes/confirmare pentru accesibilitate
     await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     onSendSOS(disabilityType);
   };
 
   return (
-    <View style={styles.container}>
+    <View style={styles.container} {...panResponder.panHandlers}>
       <View style={styles.topBar}>
-        <TouchableOpacity 
-          style={styles.menuButton} 
-          onPress={onOpenMenu} 
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={onOpenMenu}
           activeOpacity={0.7}
           accessible={true}
           accessibilityRole="button"

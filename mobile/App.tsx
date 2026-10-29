@@ -82,7 +82,6 @@ const SlidingTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
 
   return (
     <View style={styles.customTabBarContainer}>
-      {/* Capsula din sticla lichida cu deformare orizontala */}
       <Animated.View
         style={[
           styles.slidingBubble,
@@ -95,7 +94,6 @@ const SlidingTabBar: React.FC<BottomTabBarProps> = ({ state, navigation }) => {
         ]}
       />
 
-      {/* Butoanele de navigare */}
       {state.routes.map((route, index) => {
         const isFocused = state.index === index;
 
@@ -182,7 +180,6 @@ export default function App() {
     }
   }, [activeUserId]);
 
-  // Initializare & Animatie Loading
   useEffect(() => {
     Animated.timing(progressAnim, {
       toValue: 1,
@@ -261,7 +258,6 @@ export default function App() {
     };
   }, [fetchVolunteerPoints, progressAnim]);
 
-  // Conexiune Socket.io
   useEffect(() => {
     const socket = io(API_BASE_URL);
 
@@ -286,55 +282,6 @@ export default function App() {
       Alert.alert('Atenție', 'Se obțin coordonatele GPS. Te rugăm să aștepți câteva secunde.');
       return;
     }
-
-    <Tab.Navigator
-        tabBar={(props) => <SlidingTabBar {...props} />}
-        screenOptions={{ headerShown: false }}
-      >
-        <Tab.Screen name="Acasă">
-          {() => (
-            <HomeScreen
-              currentUser={currentUser}
-              location={location}
-              loading={loading}
-              onSendSOS={(selectedDisability) => handleSendSOS(selectedDisability)}
-              volunteerPoints={volunteerPoints}
-              onOpenMenu={() => setDrawerVisible(true)}
-            />
-          )}
-        </Tab.Screen>
-
-        <Tab.Screen name="Hartă">
-          {() => (
-            <MapScreen
-              onOpenMap={() => setMapVisible(true)}
-              onOpenScanner={() => setScannerVisible(true)}
-              onOpenMenu={() => setDrawerVisible(true)}
-            />
-          )}
-        </Tab.Screen>
-
-        <Tab.Screen name="Chat">
-          {() => (
-            <ChatScreen
-              onOpenChat={() => setChatVisible(true)}
-              activeRequestId={activeRequestId}
-              onOpenMenu={() => setDrawerVisible(true)}
-            />
-          )}
-        </Tab.Screen>
-
-        <Tab.Screen name="Profil">
-          {() => (
-            <ProfileScreen
-              currentUser={currentUser}
-              volunteerPoints={volunteerPoints}
-              onLogout={handleLogout}
-              onOpenMenu={() => setDrawerVisible(true)}
-            />
-          )}
-        </Tab.Screen>
-      </Tab.Navigator>
 
     setLoading(true);
     try {
@@ -382,7 +329,6 @@ export default function App() {
     outputRange: ['0%', '100%'],
   });
 
-  // 1. ECRANUL DE LOADING
   if (!isAppReady) {
     return (
       <View style={styles.loadingContainer}>
@@ -415,7 +361,6 @@ export default function App() {
     );
   }
 
-  // 2. NAVIGATORUL CU TABBAR GLISANT LIQUID
   return (
     <NavigationContainer>
       <Tab.Navigator
@@ -423,7 +368,7 @@ export default function App() {
         screenOptions={{ headerShown: false }}
       >
         <Tab.Screen name="Acasă">
-          {() => (
+          {({ navigation }) => (
             <HomeScreen
               currentUser={currentUser}
               location={location}
@@ -431,37 +376,43 @@ export default function App() {
               onSendSOS={(selectedDisability) => handleSendSOS(selectedDisability)}
               volunteerPoints={volunteerPoints}
               onOpenMenu={() => setDrawerVisible(true)}
+              onNavigateNext={() => navigation.navigate('Hartă')}
             />
           )}
         </Tab.Screen>
 
         <Tab.Screen name="Hartă">
-          {() => (
+          {({ navigation }) => (
             <MapScreen
               onOpenMap={() => setMapVisible(true)}
               onOpenScanner={() => setScannerVisible(true)}
               onOpenMenu={() => setDrawerVisible(true)}
+              onNavigateBack={() => navigation.navigate('Acasă')}
+              onNavigateNext={() => navigation.navigate('Chat')}
             />
           )}
         </Tab.Screen>
 
         <Tab.Screen name="Chat">
-          {() => (
+          {({ navigation }) => (
             <ChatScreen
               onOpenChat={() => setChatVisible(true)}
               activeRequestId={activeRequestId}
               onOpenMenu={() => setDrawerVisible(true)}
+              onNavigateBack={() => navigation.navigate('Hartă')}
+              currentUserId={currentUser?.id}
             />
           )}
         </Tab.Screen>
 
         <Tab.Screen name="Profil">
-          {() => (
+          {({ navigation }) => (
             <ProfileScreen
               currentUser={currentUser}
               volunteerPoints={volunteerPoints}
               onLogout={handleLogout}
               onOpenMenu={() => setDrawerVisible(true)}
+              onNavigateBack={() => navigation.navigate('Chat')}
             />
           )}
         </Tab.Screen>

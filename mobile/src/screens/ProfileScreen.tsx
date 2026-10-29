@@ -1,5 +1,5 @@
-import React from 'react';
-import { StyleSheet, Text, View, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { StyleSheet, Text, View, TouchableOpacity, PanResponder } from 'react-native';
 import { HeaderBar } from '../components/HeaderBar';
 
 interface ProfileScreenProps {
@@ -7,6 +7,7 @@ interface ProfileScreenProps {
   volunteerPoints: number;
   onLogout: () => void;
   onOpenMenu: () => void;
+  onNavigateBack?: () => void; // Swipe dreapta -> Chat
 }
 
 export const ProfileScreen: React.FC<ProfileScreenProps> = ({
@@ -14,9 +15,32 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
   volunteerPoints,
   onLogout,
   onOpenMenu,
+  onNavigateBack,
 }) => {
+  // Pastram callback-ul intr-un ref sincronizat
+  const backHandlerRef = useRef(onNavigateBack);
+  useEffect(() => {
+    backHandlerRef.current = onNavigateBack;
+  }, [onNavigateBack]);
+
+  // Gest swipe spre dreapta (dx > 70)
+const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        return Math.abs(gestureState.dx) > 20 && Math.abs(gestureState.dx) > Math.abs(gestureState.dy);
+      },
+      onPanResponderRelease: (_, gestureState) => {
+        // Glisare spre dreapta: mergem înapoi la Chat
+        if (gestureState.dx > 50 && backHandlerRef.current) {
+          backHandlerRef.current();
+        }
+      },
+    })
+  ).current;
+
   return (
-    <View style={styles.screen}>
+    <View style={styles.screen} {...panResponder.panHandlers}>
       <HeaderBar title="Profil Utilizator" onOpenMenu={onOpenMenu} />
 
       <View style={styles.content}>

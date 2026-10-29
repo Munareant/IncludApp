@@ -6,6 +6,7 @@ import { pool } from './config/db.js';
 import { initSocket } from './config/socket.js';
 import requestRoutes from './routes/requestRoutes.js';
 import authRoutes from './routes/authRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 
 dotenv.config();
 
