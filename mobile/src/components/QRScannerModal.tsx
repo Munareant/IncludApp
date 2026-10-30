@@ -1,20 +1,23 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View, Modal, TouchableOpacity, Alert } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import { Ionicons } from '@expo/vector-icons';
 import axios from 'axios';
 import { API_BASE_URL } from '../config/api';
 
 interface QRScannerModalProps {
   visible: boolean;
+  requestId: string | number;
+  volunteerId: string | number;
   onClose: () => void;
-  volunteerId: string;
   onSuccess: () => void;
 }
 
 export const QRScannerModal: React.FC<QRScannerModalProps> = ({
   visible,
-  onClose,
+  requestId,
   volunteerId,
+  onClose,
   onSuccess,
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
@@ -28,14 +31,14 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 
   if (!permission.granted) {
     return (
-      <Modal visible={visible} animationType="slide" transparent={false}>
-        <View style={styles.container}>
-          <Text style={styles.text}>Aplicația are nevoie de permisiunea camerei pentru a scana codul QR.</Text>
-          <TouchableOpacity style={styles.button} onPress={requestPermission}>
-            <Text style={styles.buttonText}>Permite Camera</Text>
+      <Modal visible={visible} animationType="slide" transparent>
+        <View style={styles.permissionContainer}>
+          <Text style={styles.permissionText}>Avem nevoie de acces la cameră pentru a scana codul QR.</Text>
+          <TouchableOpacity style={styles.permissionBtn} onPress={requestPermission}>
+            <Text style={styles.permissionBtnText}>Permite Accesul</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-            <Text style={styles.buttonText}>Închide</Text>
+          <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
+            <Text style={styles.cancelBtnText}>Închide</Text>
           </TouchableOpacity>
         </View>
       </Modal>
@@ -47,40 +50,27 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
     setScanned(true);
 
     try {
-      let parsedRequestId = data;
-      try {
-        const json = JSON.parse(data);
-        if (json.requestId) {
-          parsedRequestId = json.requestId;
-        }
-      } catch {
-        // ID-ul este direct string simplu
-      }
-
-      const response = await axios.post(`${API_BASE_URL}/api/requests/${parsedRequestId}/complete`, {
+      const res = await axios.post(`${API_BASE_URL}/api/requests/${requestId}/complete-qr`, {
         volunteerId,
+        qrToken: data,
       });
 
-      Alert.alert(
-        'Validare Reușită!',
-        `Misiunea a fost finalizată. Puncte: ${response.data.pointsAwarded || 10}`,
-        [
-          {
-            text: 'Super',
-            onPress: () => {
-              setScanned(false);
-              onSuccess();
-              onClose();
-            },
+      Alert.alert('Felicitări! 🎉', `${res.data.message}\nAi primit +50 puncte de voluntar!`, [
+        {
+          text: 'Continuă',
+          onPress: () => {
+            setScanned(false);
+            onSuccess();
           },
-        ]
-      );
-    } catch (error: any) {
-      Alert.alert(
-        'Eroare Validare',
-        error.response?.data?.message || 'Codul QR nu este valid sau cererea a fost deja finalizată.',
-        [{ text: 'Reîncearcă', onPress: () => setScanned(false) }]
-      );
+        },
+      ]);
+    } catch (err: any) {
+      Alert.alert('Eroare Validare', err.response?.data?.error || 'Codul QR nu este valid.', [
+        {
+          text: 'Încearcă din nou',
+          onPress: () => setScanned(false),
+        },
+      ]);
     }
   };
 
@@ -97,12 +87,20 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
         />
 
         <View style={styles.overlay}>
-          <View style={styles.scanFrame} />
-          <Text style={styles.instructionText}>Scanează codul QR al beneficiarului</Text>
-
-          <TouchableOpacity style={[styles.button, styles.cancelButton]} onPress={onClose}>
-            <Text style={styles.buttonText}>Anulează</Text>
+          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
+            <Ionicons name="close" size={28} color="#ffffff" />
           </TouchableOpacity>
+
+          <View style={styles.scanTarget}>
+            <View style={[styles.corner, styles.topLeft]} />
+            <View style={[styles.corner, styles.topRight]} />
+            <View style={[styles.corner, styles.bottomLeft]} />
+            <View style={[styles.corner, styles.bottomRight]} />
+          </View>
+
+          <Text style={styles.instructionText}>
+            Încadrează codul QR de pe ecranul beneficiarului
+          </Text>
         </View>
       </View>
     </Modal>
@@ -112,10 +110,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    backgroundColor: '#000000',
   },
   camera: {
     position: 'absolute',
@@ -124,54 +119,97 @@ const styles = StyleSheet.create({
     right: 0,
     bottom: 0,
   },
-  text: {
-    color: '#f8fafc',
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: 50,
+    right: 20,
+    backgroundColor: 'rgba(15, 23, 42, 0.8)',
+    padding: 10,
+    borderRadius: 25,
+  },
+  scanTarget: {
+    width: 240,
+    height: 240,
+    borderRadius: 16,
+    position: 'relative',
+    backgroundColor: 'transparent',
+  },
+  corner: {
+    position: 'absolute',
+    width: 32,
+    height: 32,
+    borderColor: '#10b981',
+  },
+  topLeft: {
+    top: 0,
+    left: 0,
+    borderTopWidth: 4,
+    borderLeftWidth: 4,
+    borderTopLeftRadius: 12,
+  },
+  topRight: {
+    top: 0,
+    right: 0,
+    borderTopWidth: 4,
+    borderRightWidth: 4,
+    borderTopRightRadius: 12,
+  },
+  bottomLeft: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: 4,
+    borderLeftWidth: 4,
+    borderBottomLeftRadius: 12,
+  },
+  bottomRight: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: 4,
+    borderRightWidth: 4,
+    borderBottomRightRadius: 12,
+  },
+  instructionText: {
+    color: '#ffffff',
+    fontSize: 14,
+    fontWeight: '600',
+    marginTop: 30,
+    textAlign: 'center',
+    paddingHorizontal: 20,
+  },
+  permissionContainer: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  permissionText: {
+    color: '#ffffff',
     fontSize: 16,
     textAlign: 'center',
     marginBottom: 20,
   },
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  scanFrame: {
-    width: 250,
-    height: 250,
-    borderWidth: 2,
-    borderColor: '#38bdf8',
-    borderRadius: 16,
-    backgroundColor: 'transparent',
-  },
-  instructionText: {
-    color: '#ffffff',
-    fontSize: 15,
-    marginTop: 20,
-    fontWeight: '600',
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  button: {
-    backgroundColor: '#2563eb',
+  permissionBtn: {
+    backgroundColor: '#10b981',
     paddingVertical: 12,
     paddingHorizontal: 24,
     borderRadius: 8,
-    marginTop: 15,
+    marginBottom: 12,
   },
-  cancelButton: {
-    backgroundColor: '#ef4444',
-    position: 'absolute',
-    bottom: 40,
-  },
-  buttonText: {
+  permissionBtnText: {
     color: '#ffffff',
-    fontWeight: '700',
-    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  cancelBtn: {
+    padding: 10,
+  },
+  cancelBtnText: {
+    color: '#94a3b8',
   },
 });
